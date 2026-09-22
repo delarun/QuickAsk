@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.egg-info/
+/build/
+/dist/
+/.venv/
+
+# личный конфиг с ключами — в репозиторий идёт только config.example.toml
+config.toml

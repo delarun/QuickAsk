@@ -1,0 +1,72 @@
+# ~/.config/quickask/config.toml
+# Всё необязательно — отсутствующие ключи берутся из DEFAULTS в quickask.py
+
+[llm]
+base_url    = "http://127.0.0.1:8080/v1"
+model       = "MiniCPM5-2B-Q8_0"
+api_key     = ""
+max_tokens  = -1
+temperature = 1.0
+timeout     = 120
+native_tools    = true   # отдавать модели MCP-инструменты как OpenAI tools (нужен --jinja у llama-server)
+max_tool_rounds = 5
+#thinking        = true   # режим рассуждений MiniCPM; false — заметно быстрее, блок 💭 не появится
+history_turns   = 12
+vision_model    = ""       # напр. "MiniCPM-V-4_5-Q4_K_M"
+image_max_px    = 1024     # длинная сторона; меньше — быстрее и меньше image-токенов
+image_format    = "jpeg"
+system_prompt = """Ты быстрый локальный ассистент. Отвечай кратко, по делу, на языке вопроса, без вступлений. \
+Если вопрос требует актуальных данных из интернета — вызови инструмент поиска, затем ответь и укажи источники."""
+
+[ui]
+width         = 1080
+max_height    = 720
+margin_top    = "25%"  # от верха экрана: пиксели (64) или доля высоты монитора ("25%"); только с gtk4-layer-shell
+clear_on_hide = false   # сбрасывать диалог при Esc
+show_reasoning     = true   # блок 💭 Рассуждения над ответом
+collapse_reasoning = true   # сворачивать его, когда начался ответ (клик раскрывает)
+hide_after_action_ms = 700  # спрятать окно после focus_window/focus_chrome_tab и т.п. (0 = не прятать)
+density       = 1.0    # множитель всех отступов: 1.2–1.5 просторнее, 0.8 плотнее
+
+# ── MCP-серверы (stdio). Можно несколько — все их инструменты попадут в модель. ──
+
+[[mcp]]
+name        = "ddg"
+command     = ["uvx", "duckduckgo-mcp-server"]   # pacman -S uv
+search_tool = "search"     # какой инструмент дёргать для "/s …" / Ctrl+S
+max_chars   = 6000
+
+# Вариант с собственным SearXNG (лучше по качеству и без rate-limit'ов DDG):
+# [[mcp]]
+# name        = "searx"
+# command     = ["npx", "-y", "mcp-searxng"]
+# env         = { SEARXNG_URL = "http://searx.lan:8080" }
+# search_tool = "searxng_web_search"
+# max_chars   = 8000
+
+[[mcp]]
+name          = "desk"
+command       = ["@self", "--mcp", "desk"]      # встроенный сервер — тот же бинарник или quickask.py
+# кнопки, команды и «спрятать окно после focus_*» сервер объявляет сам (quickask.sdk);
+# для стороннего сервера без SDK то же самое задаётся списком: hide_on_tools = ["focus_window", …]
+# env = { DESK_MCP_ROOTS = "/home/USER:/mnt:/media" }   # где разрешён поиск/чтение файлов (по умолчанию ~, /mnt, /media, /run/media, /tmp)
+# env = { DESK_MCP_CDP = "http://127.0.0.1:9222" }   # если Chrome слушает другой порт
+ 
+
+# Fetch страниц (модель сможет открыть найденную ссылку целиком):
+[[mcp]]
+name    = "fetch"
+command = ["uvx", "mcp-server-fetch"]
+
+[[mcp]]
+name    = "agent"
+command = ["@self", "--mcp", "agent"]
+
+[mcp.env]                                        # подтаблица этого [[mcp]], ставить сразу после него
+AGENT_HOME      = "/home/USER/Agents"         # папка каждой задачи → /work в контейнере
+AGENT_OUT       = "/home/USER/Downloads"      # → /out, сюда агент кладёт результат
+AGENT_LLM_URL   = "http://127.0.0.1:8080/v1"       # LLM для агента; --network host, так что localhost хоста виден
+AGENT_API_KEY   = ""
+AGENT_MODEL     = "qwen2.5-coder-7b"             # лучше сюда кодер 7B+ или удалённую через гейт
+AGENT_MAX_STEPS = "60"
+# AGENT_IMAGE   = "ghcr.io/delarun/quickask-agent:latest"   # по умолчанию; свой — docker build -t … docker/agent
