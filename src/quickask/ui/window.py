@@ -54,6 +54,15 @@ class QuickAskWindow(Gtk.ApplicationWindow):
             self.connect("realize", lambda *_: self.get_surface().connect(
                 "enter-monitor", lambda _s, mon: LayerShell.set_margin(self, LayerShell.Edge.TOP,
                                                                         self._margin_top(mon))))
+        elif sys.platform == "win32":
+            from . import win32              # поверх всех, без кнопки на панели задач, по ui.margin_top
+            win32.attach(self)
+
+        # прятаться, когда окно теряет фокус, — как лаунчеры на Windows; на Linux по умолчанию нет
+        blur = self.cfg["ui"].get("hide_on_blur")
+        self._hide_on_blur = (sys.platform == "win32") if blur is None else bool(blur)
+        self._blur_hidden_at = 0.0
+        self.connect("notify::is-active", self._on_active_changed)
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         root.add_css_class("qa-root")
@@ -202,9 +211,16 @@ class QuickAskWindow(Gtk.ApplicationWindow):
     def toggle(self) -> None:
         if self.get_visible():
             self.hide_window()
+        elif time.monotonic() - self._blur_hidden_at < 0.4:
+            pass    # окно только что спряталось из-за этого же клика по трею — не открывать обратно
         else:
             self.present()
             self.entry.grab_focus()
+
+    def _on_active_changed(self, *_) -> None:
+        if self._hide_on_blur and self.get_visible() and not self.is_active() and self._question is None:
+            self._blur_hidden_at = time.monotonic()
+            self.set_visible(False)          # без hide_window: идущий ответ не прерываем, он дождётся
 
     def hide_if_idle(self) -> bool:
         """Спрятаться после действия (focus_window и т.п.), если не начали печатать новый вопрос."""

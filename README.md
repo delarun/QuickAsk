@@ -59,7 +59,9 @@ sudo pacman -S python gtk4 python-gobject gtk4-layer-shell uv wl-clipboard libno
 | | Linux x86_64 / aarch64 | Windows x86_64 | macOS arm64 |
 |---|---|---|---|
 | окно, стрим, Markdown, MCP | ✓ | ✓ | ✓ |
-| окно поверх всего (layer-shell) | ✓ под Wayland | обычное окно | обычное окно |
+| где живёт | резидентно, хоткей в компоузиторе | в трее, глобальный хоткей `ui.hotkey` | обычное окно |
+| окно поверх всего, по `ui.margin_top` | ✓ под Wayland (layer-shell) | ✓ | — |
+| повторный запуск — показать/спрятать | ✓ (D-Bus) | ✓ | ✓ |
 | `desk`: окна и воркспейсы | ✓ под niri | — | — |
 | `desk`: вкладки Chrome, файлы, буфер | ✓ | ✓ | ✓ |
 | фоновые агенты | ✓ | через Docker Desktop | через Docker Desktop |
@@ -96,13 +98,12 @@ quickask --version
 
 ### Дальше — для обоих вариантов
 
-**1. Конфиг** — из примера, с вашей моделью:
+**1. Конфиг.** На первом запуске QuickAsk сам создаёт `config.toml` из [примера](src/quickask/config.example.toml) — останется вписать свою модель. Где он лежит, смотрите в разделе [Где лежит конфиг](#где-лежит-конфиг) или спросите у самого QuickAsk:
 
 ```sh
-mkdir -p ~/.config/quickask
-curl -Lo ~/.config/quickask/config.toml \
-  https://raw.githubusercontent.com/delarun/quickask/main/config.example.toml
-$EDITOR ~/.config/quickask/config.toml
+quickask --version
+# quickask 0.1.0  GTK 4.22.5  layer-shell: 1.3.0 (active)
+# config: /home/you/.config/quickask/config.toml
 ```
 
 Минимум — секция `[llm]`:
@@ -118,7 +119,7 @@ api_key  = ""                            # для облачных гейтов
 
 **2. Проверить запуск** — `quickask`. Должно появиться окно; если нет — запустите из терминала и посмотрите вывод.
 
-**3. Повесить хоткей** в компоузиторе. Повторный запуск — это toggle окна, отдельной команды «спрятать» не нужно.
+**3. Повесить хоткей** в компоузиторе (Linux). Повторный запуск — это toggle окна, отдельной команды «спрятать» не нужно. На Windows хоткей свой — см. [ниже](#windows).
 
 niri (`~/.config/niri/config.kdl`):
 
@@ -161,7 +162,26 @@ systemctl --user enable --now quickask
 docker pull ghcr.io/delarun/quickask-agent:latest
 ```
 
-> **Важно про перезапуск.** QuickAsk — одна резидентная копия (`Gtk.Application` с фиксированным app-id), и Esc её не закрывает, а только прячет окно. После обновления бинарника, правки кода или конфига нового запуска мало — процесс нужно убить:
+### Windows
+
+QuickAsk живёт в трее. Первый запуск `quickask-windows-x86_64.exe` показывает окно и значок рядом с часами. Дальше окно открывается и прячется:
+
+- глобальным сочетанием `ui.hotkey` — по умолчанию `Alt+Space`;
+- кликом по значку в трее;
+- повторным запуском `.exe` — он передаст команду уже запущенной копии и выйдет.
+
+Окно встаёт поверх всех, по центру монитора с курсором, на высоте `ui.margin_top`. На панели задач кнопки у него нет, а при потере фокуса оно прячется — это отключается строкой `hide_on_blur = false`.
+
+В меню значка (правая кнопка):
+- **кнопки серверов** — например, «Агенты»;
+- **«Открыть config.toml»** и **«Папка конфига»**;
+- **«Запускать при входе в Windows»** — пишет `quickask --daemon` в автозагрузку текущего пользователя (`HKCU\…\Run`);
+- **«Перезапустить»** — перечитать конфиг после правки;
+- **«Выход»**.
+
+Если `Alt+Space` уже занят другой программой, QuickAsk скажет об этом в окне — поменяйте `ui.hotkey`: `"Ctrl+Alt+Space"`, `"Win+Shift+Q"`, `"Ctrl+Alt+F12"`. Буквы пишутся латиницей, как на клавише: сочетание привязано к физической клавише, а не к раскладке.
+
+> **Важно про перезапуск.** QuickAsk — одна резидентная копия, и Esc её не закрывает, а только прячет окно. После обновления бинарника, правки кода или конфига нового запуска мало: он лишь покажет окно уже запущенной копии. На Windows — пункт «Перезапустить» в трее, на Linux процесс нужно убить:
 >
 > ```sh
 > pkill -f 'bin/quickask'
@@ -222,7 +242,20 @@ docker pull ghcr.io/delarun/quickask-agent:latest
 
 ## Настройка
 
-Файл `~/.config/quickask/config.toml`. Всё необязательно — чего нет, берётся из `DEFAULTS` в [`src/quickask/config.py`](src/quickask/config.py).
+### Где лежит конфиг
+
+| ОС | Путь |
+|---|---|
+| Linux | `~/.config/quickask/config.toml`, а если задан `$XDG_CONFIG_HOME` — `$XDG_CONFIG_HOME/quickask/config.toml` |
+| Windows | `%APPDATA%\QuickAsk\config.toml` — обычно `C:\Users\<имя>\AppData\Roaming\QuickAsk\config.toml` |
+| macOS | `~/Library/Application Support/QuickAsk/config.toml` |
+
+- **Свой путь** — переменная `QUICKASK_CONFIG=/путь/к/config.toml`.
+- **Какой файл прочитан** — показывает вторая строка `quickask --version`. На Windows быстрее через трей: «Открыть config.toml».
+- **Если файла нет,** QuickAsk создаёт его на первом запуске из [`src/quickask/config.example.toml`](src/quickask/config.example.toml) — там все ключи с комментариями.
+- **Старый путь на Windows и macOS:** если там раньше лежал `~/.config/quickask/config.toml`, а на родном месте файла ещё нет, читается старый.
+
+Всё в конфиге необязательно — чего нет, берётся из `DEFAULTS` в [`src/quickask/config.py`](src/quickask/config.py). После правки QuickAsk нужно перезапустить.
 
 ### `[llm]`
 
@@ -246,7 +279,9 @@ docker pull ghcr.io/delarun/quickask-agent:latest
 | Ключ | По умолчанию | Смысл |
 |---|---|---|
 | `width`, `max_height` | `720`, `520` | размеры окна; по высоте лента упирается в `max_height` и дальше скроллится |
-| `margin_top` | `140` | отступ от верха экрана (только с gtk4-layer-shell) |
+| `margin_top` | `"25%"` | отступ от верха экрана: пиксели (`64`) или доля высоты монитора (`"25%"`). На Linux — с gtk4-layer-shell, на Windows — всегда |
+| `hotkey` | `"Alt+Space"` | Windows: глобальное сочетание, открывающее окно. Модификаторы `Ctrl` `Alt` `Shift` `Win`, клавиши — буквы, цифры, `Space`, `F1`–`F24`, стрелки. На Linux сочетание задаётся в компоузиторе |
+| `hide_on_blur` | да на Windows, нет на Linux | прятать окно, когда оно теряет фокус; идущий ответ при этом не прерывается |
 | `density` | `1.0` | множитель **всех** отступов: `1.2–1.5` просторнее, `0.8` плотнее |
 | `show_reasoning`, `collapse_reasoning` | `true`, `true` | показывать блок 💭 и сворачивать его, когда пошёл ответ |
 | `clear_on_hide` | `false` | сбрасывать диалог при Esc |
@@ -355,12 +390,11 @@ command = ["uvx", "mcp-server-fetch"]     # модель откроет найд
 ```
 quickask.py                запуск из исходников (под симлинк ~/.local/bin/quickask)
 pyproject.toml             метаданные, версия, команда quickask для pip install
-config.example.toml        шаблон конфига
-
 src/quickask/              ядро без GUI — поднимается и без дисплея
   __init__.py                версия, self_command() для @self
   __main__.py                режимы запуска: окно, --mcp, --version
-  config.py                  DEFAULTS и чтение config.toml
+  config.py                  DEFAULTS, где лежит config.toml на каждой ОС, его чтение
+  config.example.toml        пример конфига — из него создаётся config.toml на первом запуске
   llm.py                     стрим /chat/completions, разбор <think>…</think>
   mcp.py                     клиент MCP (stdio JSON-RPC) и хаб над серверами
   sdk/                       SDK для серверов, расширяющих интерфейс — см. его README
@@ -372,6 +406,9 @@ src/quickask/              ядро без GUI — поднимается и б�
     app.py                     Gtk.Application, резидентность, аргументы
     window.py                  окно: лента диалога, шапка, поле ввода, слэш-команды
     views.py                   страницы серверов: JSON → виджеты, действия, автообновление
+    instance.py                одна копия на Windows и macOS, где нет D-Bus
+    win32.py                   Windows: трей, глобальный хоткей, окно поверх всех
+    quickask.ico               значок трея и .exe
     worker.py                  поток одного запроса: раунды инструментов, ask_user
     markdown.py                Markdown → Gtk.TextBuffer на TextTag-ах
     theme.py                   CSS-шаблон и сетка отступов (ui.density)
@@ -388,7 +425,9 @@ packaging/                 сборка бинарника
   quickask.spec              спека PyInstaller
   entry.py                   точка входа бинарника
   hooks/                     хук для gtk4-layer-shell
+  build-gtk4-layer-shell.sh  сборка gtk4-layer-shell из исходников для Ubuntu 24.04, где его нет в пакетах
   smoke.py                   проверка собранного бинарника без дисплея
+  THIRD_PARTY_NOTICES.md     вшитые в бинарник компоненты и их лицензии — едет в каждый релиз
 
 .github/workflows/
   build.yml                  бинарники под Linux, Windows, macOS; релиз по тегу

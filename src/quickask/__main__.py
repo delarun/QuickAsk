@@ -5,7 +5,7 @@
   quickask --daemon        резидентно, без окна
   quickask --open LINK     открыть страницу MCP-сервера: `agent:agent?id=0922-…`
   quickask --mcp NAME      встроенный MCP-сервер на stdio (desk, agent) — бинарнику не нужен отдельный Python
-  quickask --version       версия, GTK и наличие gtk4-layer-shell
+  quickask --version       версия, GTK, gtk4-layer-shell и путь к config.toml
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ def _ensure_mcps() -> None:
 
 def _version() -> int:
     from quickask import __version__
+    from quickask.config import config_path
     from quickask.ui import HAVE_LAYER_SHELL, LayerShell   # инициализирует GTK так же, как окно
     from gi.repository import Gtk
 
@@ -32,6 +33,10 @@ def _version() -> int:
         layer = f"{ver} ({'active' if LayerShell.is_supported() else 'inactive'})"
     print(f"quickask {__version__}  GTK {Gtk.get_major_version()}.{Gtk.get_minor_version()}."
           f"{Gtk.get_micro_version()}  layer-shell: {layer}")
+    print(f"config: {config_path()}")
+    if sys.platform == "win32":      # импорт привязывает все функции WinAPI — опечатка в имени упадёт здесь, в CI
+        from quickask.ui import win32  # noqa: F401
+        print("tray: ok")
     return 0
 
 

@@ -25,5 +25,9 @@ Homepage = "https://github.com/delarun/quickask"
 package-dir = { "" = "src", "mcps" = "mcps" }
 packages = ["quickask", "quickask.sdk", "quickask.ui", "mcps"]
 
+[tool.setuptools.package-data]
+quickask = ["config.example.toml"]
+"quickask.ui" = ["quickask.ico"]
+
 [tool.setuptools.dynamic]
 version = { attr = "quickask.__version__" }

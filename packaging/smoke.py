@@ -29,6 +29,8 @@ version = run(["--version"]).strip()
 print("version:", version)
 if not version.startswith("quickask ") or "GTK 4." not in version:
     sys.exit(f"FAIL --version: {version!r}")
+if sys.platform == "win32" and "tray: ok" not in version:
+    sys.exit(f"FAIL: Windows tray module did not load: {version!r}")
 if os.environ.get("SMOKE_REQUIRE_LAYER_SHELL") and "layer-shell: no" in version:
     sys.exit("FAIL: gtk4-layer-shell not bundled")   # без дисплея будет «(inactive)» — это нормально
 
